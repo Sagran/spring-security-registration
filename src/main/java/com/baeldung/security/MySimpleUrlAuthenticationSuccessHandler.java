@@ -1,5 +1,6 @@
 package com.baeldung.security;
 
+import com.baeldung.enums.PrivilegeEnum;
 import com.baeldung.persistence.model.User;
 import com.baeldung.service.DeviceService;
 import org.slf4j.Logger;
@@ -44,10 +45,9 @@ public class MySimpleUrlAuthenticationSuccessHandler implements AuthenticationSu
 
             String username;
             if (authentication.getPrincipal() instanceof User) {
-            	username = ((User)authentication.getPrincipal()).getEmail();
-            }
-            else {
-            	username = authentication.getName();
+                username = ((User) authentication.getPrincipal()).getEmail();
+            } else {
+                username = authentication.getName();
             }
             LoggedUser user = new LoggedUser(username, activeUserStore);
             session.setAttribute("user", user);
@@ -60,7 +60,7 @@ public class MySimpleUrlAuthenticationSuccessHandler implements AuthenticationSu
     private void loginNotification(Authentication authentication, HttpServletRequest request) {
         try {
             if (authentication.getPrincipal() instanceof User && isGeoIpLibEnabled()) {
-                deviceService.verifyDevice(((User)authentication.getPrincipal()), request);
+                deviceService.verifyDevice(((User) authentication.getPrincipal()), request);
             }
         } catch (Exception e) {
             logger.error("An error occurred while verifying device or location", e);
@@ -82,6 +82,7 @@ public class MySimpleUrlAuthenticationSuccessHandler implements AuthenticationSu
     protected String determineTargetUrl(final Authentication authentication) {
         boolean isUser = false;
         boolean isAdmin = false;
+        boolean isManager = false;
         final Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         for (final GrantedAuthority grantedAuthority : authorities) {
             if (grantedAuthority.getAuthority().equals("READ_PRIVILEGE")) {
@@ -90,20 +91,25 @@ public class MySimpleUrlAuthenticationSuccessHandler implements AuthenticationSu
                 isAdmin = true;
                 isUser = false;
                 break;
+            } else if (grantedAuthority.getAuthority().equals(PrivilegeEnum.MANAGER_PRIVILEGE.name())) {
+                isManager = true;
+                isUser = false;
+                break;
             }
         }
         if (isUser) {
-        	 String username;
-             if (authentication.getPrincipal() instanceof User) {
-             	username = ((User)authentication.getPrincipal()).getEmail();
-             }
-             else {
-             	username = authentication.getName();
-             }
+            String username;
+            if (authentication.getPrincipal() instanceof User) {
+                username = ((User) authentication.getPrincipal()).getEmail();
+            } else {
+                username = authentication.getName();
+            }
 
-            return "/homepage.html?user="+username;
+            return "/homepage.html?user=" + username;
         } else if (isAdmin) {
             return "/console";
+        } else if (isManager) {
+            return "/management";
         } else {
             throw new IllegalStateException();
         }
